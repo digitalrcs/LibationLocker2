@@ -2,7 +2,7 @@
 
 # Changelog
 
-## Unreleased
+## 2.1.0 - 2026-11-01
 
 - Replaced Usage & History charts with locally bundled Apache ECharts 6.1.0: consumption line/area, usage and reorder bars, and stepped stock history.
 - Preserved chart toggles and expanded views, with theme-aware tooltips, date zoom sliders, responsive resizing, and accessible descriptions.

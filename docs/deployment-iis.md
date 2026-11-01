@@ -19,6 +19,8 @@ Output is written to `artifacts/publish/LibationLocker`. The script never copies
 
 ## Safe Deployment Order
 
+For an existing Windows x64 installation, prefer the release's `iis-upgrade-win-x64.zip`. It excludes `web.config` and all `appsettings*.json` files. Copy its contents over the existing application without deleting or mirroring the destination. The full `app-win-x64.zip` includes defaults for new installations instead. See the [v2.1.0 upgrade notes](releases/v2.1.0.md), especially if you previously used the legacy built-in login.
+
 1. Confirm the production connection string and IIS physical path.
 2. Back up the production database and application directory.
 3. Apply only the database migrations the production database does not already have.

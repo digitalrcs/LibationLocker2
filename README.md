@@ -12,7 +12,7 @@ Libation Locker is a self-hosted personal bar inventory and recipe application b
 
 > Built and maintained by **DigitalRCS**.
 
-Download the latest application and source packages from [GitHub Releases](https://github.com/digitalrcs/LibationLocker2/releases/latest). See the [v2.0.0 release notes](docs/releases/v2.0.0.md) for installation instructions and requirements.
+Download the latest application and source packages from [GitHub Releases](https://github.com/digitalrcs/LibationLocker2/releases/latest). See the [v2.1.0 release notes](docs/releases/v2.1.0.md) for installation instructions and requirements. Existing IIS installations should use the configuration-free upgrade ZIP.
 
 ## Server Edition vs. ESP32 Edition
 
