@@ -2,7 +2,7 @@
 
 # Changelog
 
-## Unreleased
+## 2.0.0 - 2026-11-01
 
 - Prepared a credential-free GitHub distribution package.
 - Added LocalDB, Express, and full SQL Server setup automation.
