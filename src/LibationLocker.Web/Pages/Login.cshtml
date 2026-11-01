@@ -1,0 +1,95 @@
+@page
+@model LoginModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign In - Libation Locker</title>
+    <script>
+        (() => {
+            const theme = localStorage.getItem("ll-theme") || "cellar-light";
+            document.documentElement.setAttribute("data-theme", theme);
+        })();
+    </script>
+    <link rel="stylesheet" href="~/css/themes.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <script src="~/js/floaters.js" asp-append-version="true"></script>
+</head>
+<body class="login-body">
+    <!-- Floating background decoration -->
+    <div class="bg-floaters" aria-hidden="true">
+        <!-- Wine bottles -->
+        <svg class="bg-floater" style="height:72px" viewBox="0 0 22 58"><path d="M9 0h4v4c3 1.5 4 5.5 4 10v3c2 3 3 6 3 10v21a6 5 0 0 1-12 0V27c0-4 1-7 3-10v-3c0-4.5 1-8.5 4-10z"/></svg>
+        <svg class="bg-floater" style="height:84px" viewBox="0 0 22 58"><path d="M9 0h4v4c3 1.5 4 5.5 4 10v3c2 3 3 6 3 10v21a6 5 0 0 1-12 0V27c0-4 1-7 3-10v-3c0-4.5 1-8.5 4-10z"/></svg>
+        <svg class="bg-floater" style="height:60px" viewBox="0 0 22 58"><path d="M9 0h4v4c3 1.5 4 5.5 4 10v3c2 3 3 6 3 10v21a6 5 0 0 1-12 0V27c0-4 1-7 3-10v-3c0-4.5 1-8.5 4-10z"/></svg>
+        <svg class="bg-floater" style="height:78px" viewBox="0 0 22 58"><path d="M9 0h4v4c3 1.5 4 5.5 4 10v3c2 3 3 6 3 10v21a6 5 0 0 1-12 0V27c0-4 1-7 3-10v-3c0-4.5 1-8.5 4-10z"/></svg>
+        <svg class="bg-floater" style="height:64px" viewBox="0 0 22 58"><path d="M9 0h4v4c3 1.5 4 5.5 4 10v3c2 3 3 6 3 10v21a6 5 0 0 1-12 0V27c0-4 1-7 3-10v-3c0-4.5 1-8.5 4-10z"/></svg>
+        <!-- Moonshine jugs -->
+        <svg class="bg-floater" style="height:70px" viewBox="0 0 52 56"><ellipse cx="20" cy="4" rx="7" ry="4"/><path d="M13 7h14v11c8 2 11 8 11 17c0 12-8 19-18 19s-18-7-18-19c0-9 3-15 11-17z"/><path d="M35 24c8-2 12 5 12 11s-4 12-12 11" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg>
+        <svg class="bg-floater" style="height:65px" viewBox="0 0 52 56"><ellipse cx="20" cy="4" rx="7" ry="4"/><path d="M13 7h14v11c8 2 11 8 11 17c0 12-8 19-18 19s-18-7-18-19c0-9 3-15 11-17z"/><path d="M35 24c8-2 12 5 12 11s-4 12-12 11" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg>
+        <svg class="bg-floater" style="height:88px" viewBox="0 0 52 56"><ellipse cx="20" cy="4" rx="7" ry="4"/><path d="M13 7h14v11c8 2 11 8 11 17c0 12-8 19-18 19s-18-7-18-19c0-9 3-15 11-17z"/><path d="M35 24c8-2 12 5 12 11s-4 12-12 11" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg>
+        <svg class="bg-floater" style="height:72px" viewBox="0 0 52 56"><ellipse cx="20" cy="4" rx="7" ry="4"/><path d="M13 7h14v11c8 2 11 8 11 17c0 12-8 19-18 19s-18-7-18-19c0-9 3-15 11-17z"/><path d="M35 24c8-2 12 5 12 11s-4 12-12 11" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg>
+        <svg class="bg-floater" style="height:60px" viewBox="0 0 52 56"><ellipse cx="20" cy="4" rx="7" ry="4"/><path d="M13 7h14v11c8 2 11 8 11 17c0 12-8 19-18 19s-18-7-18-19c0-9 3-15 11-17z"/><path d="M35 24c8-2 12 5 12 11s-4 12-12 11" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg>
+        <!-- Martini glasses -->
+        <svg class="bg-floater" style="height:65px" viewBox="0 0 52 60"><path d="M1 2h50L28 35v15c6 1 12 3 12 7H12c0-4 6-6 12-7V35L1 2z"/></svg>
+        <svg class="bg-floater" style="height:72px" viewBox="0 0 52 60"><path d="M1 2h50L28 35v15c6 1 12 3 12 7H12c0-4 6-6 12-7V35L1 2z"/></svg>
+        <svg class="bg-floater" style="height:58px" viewBox="0 0 52 60"><path d="M1 2h50L28 35v15c6 1 12 3 12 7H12c0-4 6-6 12-7V35L1 2z"/></svg>
+        <!-- Cocktail shakers -->
+        <svg class="bg-floater" style="height:80px" viewBox="0 0 32 62"><path d="M8 0h16C26 0 26 2 26 4v8c4 2 6 6 6 10v28c0 6-6 10-14 10S4 56 4 50V22c0-4 2-8 6-10V4C10 2 10 0 8 0z"/></svg>
+        <svg class="bg-floater" style="height:65px" viewBox="0 0 32 62"><path d="M8 0h16C26 0 26 2 26 4v8c4 2 6 6 6 10v28c0 6-6 10-14 10S4 56 4 50V22c0-4 2-8 6-10V4C10 2 10 0 8 0z"/></svg>
+        <svg class="bg-floater" style="height:70px" viewBox="0 0 32 62"><path d="M8 0h16C26 0 26 2 26 4v8c4 2 6 6 6 10v28c0 6-6 10-14 10S4 56 4 50V22c0-4 2-8 6-10V4C10 2 10 0 8 0z"/></svg>
+        <!-- Corkscrew -->
+        <svg class="bg-floater" style="height:72px" viewBox="0 0 36 70"><ellipse cx="18" cy="7" rx="14" ry="7"/><rect x="16" y="13" width="4" height="24"/><path d="M18 37C8 42 8 52 18 52C28 52 28 62 18 66" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg>
+    </div>
+    <div class="panel login-panel">
+        <img class="login-digitalrcs-logo" src="~/branding/digitalrcs-logo.png" alt="DigitalRCS" />
+        <h1>Libation Locker</h1>
+        <p class="muted-copy">Server Edition &bull; Sign in to continue</p>
+        @if (Model.Error != null)
+        {
+            <p class="login-error">@Model.Error</p>
+        }
+        <form method="post">
+            <label>Email<input name="Email" type="text" autocomplete="username" autofocus value="@Model.Email" /></label>
+            <label>Password
+                <span class="password-field">
+                    <input id="login-password" name="Password" type="password" autocomplete="current-password" />
+                    <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" title="Show password">
+                        <svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        <svg class="eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M3 3l18 18" />
+                            <path d="M10.6 10.6A3 3 0 0 0 13.4 13.4" />
+                            <path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18.6 18.6 0 0 1-3.1 4.1" />
+                            <path d="M6.2 6.8A18 18 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 4.1-.8" />
+                        </svg>
+                    </button>
+                </span>
+            </label>
+            <button class="button" type="submit">Sign In</button>
+        </form>
+    </div>
+    <script>
+        (() => {
+            const password = document.getElementById("login-password");
+            const toggle = document.querySelector(".password-toggle");
+            if (!password || !toggle) return;
+
+            toggle.addEventListener("click", () => {
+                const shouldShow = password.type === "password";
+                password.type = shouldShow ? "text" : "password";
+                toggle.setAttribute("aria-pressed", shouldShow ? "true" : "false");
+                toggle.setAttribute("aria-label", shouldShow ? "Hide password" : "Show password");
+                toggle.title = shouldShow ? "Hide password" : "Show password";
+                password.focus();
+            });
+        })();
+    </script>
+</body>
+</html>

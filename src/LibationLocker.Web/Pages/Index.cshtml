@@ -1,0 +1,708 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Inventory";
+}
+
+<section class="app-view is-active" id="inventory-view" data-view="inventory">
+    <div class="panel inventory-panel">
+        <div class="accordion ai-accordion">
+            <button class="accordion-header" data-ai-toggle aria-expanded="false" aria-controls="assistant" title="Ask AI about this inventory">
+                <span class="accordion-title">
+                    <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Ask AI
+                </span>
+                <svg class="accordion-chevron" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="accordion-body" id="assistant" hidden>
+                <div class="ai-strip">
+                    <label class="ai-question">
+                        <span>Ask AI about this inventory</span>
+                        <input id="ai-question" placeholder="What cocktails can I make, what am I missing, what should I buy next" />
+                    </label>
+                    <label class="ai-mode">
+                        <span>Mode</span>
+                        <select id="ai-mode">
+                            <option value="general">General</option>
+                        </select>
+                    </label>
+                    <label class="check ai-include"><input type="checkbox" id="ai-include" checked /> Include inventory snapshot</label>
+                    <button class="button" id="ai-ask" title="Ask the configured AI model about your inventory">Ask AI</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="inventory-tools">
+            <label>
+                <span>Search</span>
+                <input id="filter-search" placeholder="brand, name, tags..." />
+            </label>
+            <label>
+                <span>Type</span>
+                <select id="filter-type">
+                    <option value="">All</option>
+                </select>
+            </label>
+            <label>
+                <span>Need to buy</span>
+                <select id="filter-need">
+                    <option value="">All</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                </select>
+            </label>
+            <button class="button" id="add-item" title="Add a new item">+ Add</button>
+            <button class="button secondary" id="refresh" title="Reload inventory from SQL Server">Refresh</button>
+        </div>
+
+        <div class="summary-line" aria-live="polite">
+            <span><strong id="stat-total">0</strong> total items</span>
+            <span><strong id="stat-need">0</strong> need to buy</span>
+            <span><strong id="stat-low">0</strong> nearly empty</span>
+            <span><strong id="stat-types">0</strong> spirit types</span>
+        </div>
+
+        <div class="table-wrap inventory-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="item-actions-heading"></th>
+                        <th>Type</th>
+                        <th>Brand</th>
+                        <th>Name</th>
+                        <th>Size</th>
+                        <th>ABV</th>
+                        <th>Qty</th>
+                        <th>Remain%</th>
+                        <th>Need</th>
+                        <th>Rating</th>
+                        <th>Tags</th>
+                    </tr>
+                </thead>
+                <tbody id="items-body"></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section class="app-view" id="config-view" data-view="config">
+    <div class="panel config-panel">
+        <div class="config-layout">
+            <nav class="config-nav" aria-label="Config sections">
+                <a href="#" data-config-tab="dropdowns" class="is-active">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+                    Dropdowns
+                </a>
+                <a href="#" data-config-tab="ai">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+                    AI
+                </a>
+                <a href="#" data-config-tab="ai-modes">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l3 3"/><path d="M18 2v4h4"/></svg>
+                    AI Modes
+                </a>
+                <a href="#" data-config-tab="users">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Users
+                </a>
+            </nav>
+
+            <form id="config-form">
+
+                <!-- Dropdowns -->
+                <div class="config-section is-active" data-config-section="dropdowns">
+                    <div class="config-section-head">
+                        <h2>Dropdown Values</h2>
+                        <p class="muted-copy">Editable lists for item entry dropdowns. One value per line. Changes apply after saving.</p>
+                    </div>
+                    <div class="config-grid">
+                        <label>Types (one per line)<textarea id="cfg-types" rows="8"></textarea></label>
+                        <label>Sizes mL (one per line)<textarea id="cfg-sizes" rows="8"></textarea></label>
+                        <label>ABV presets (one per line)<textarea id="cfg-abv" rows="8"></textarea></label>
+                        <label>Remaining % presets (one per line)<textarea id="cfg-remain" rows="8"></textarea></label>
+                    </div>
+                    <div class="actions">
+                        <button class="button" type="submit" title="Save config changes">Save Config</button>
+                    </div>
+                </div>
+
+                <!-- AI -->
+                <div class="config-section" data-config-section="ai">
+                    <div class="config-section-head">
+                        <h2>AI Configuration</h2>
+                        <p class="muted-copy">Connect to your AI provider and choose the model used for inventory questions.</p>
+                    </div>
+                    <div class="config-grid">
+                        <label>Enable AI
+                            <select id="cfg-ai-enabled">
+                                <option value="true">Enabled</option>
+                                <option value="false">Disabled</option>
+                            </select>
+                        </label>
+                        <label>AI provider
+                            <select id="cfg-ai-provider">
+                                <option value="lmstudio">LM Studio</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="openai_compat">OpenAI compatible</option>
+                            </select>
+                        </label>
+                        <label>Base URL<input id="cfg-ai-base" /></label>
+                        <label>Model
+                            <div class="field-with-action">
+                                <select id="cfg-ai-model-select">
+                                    <option value="">Manual / current model</option>
+                                </select>
+                                <button class="button secondary icon-button" type="button" id="refresh-models" title="Load model list from the configured provider">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                </button>
+                            </div>
+                        </label>
+                        <label>Manual model override<input id="cfg-ai-model" /></label>
+                        <label>API key<input id="cfg-ai-key" type="password" autocomplete="off" placeholder="Leave blank for local LM Studio" /></label>
+                        <label>Temperature<input id="cfg-ai-temperature" type="number" min="0" max="2" step="0.1" /></label>
+                        <label>Max output tokens (0 = provider default)<input id="cfg-ai-max-tokens" type="number" min="0" placeholder="0" title="LM Studio always uses its loaded model configuration. Other providers use 0 for their default or a positive custom limit." /></label>
+                        <label>Timeout (seconds)<input id="cfg-ai-timeout" type="number" min="30" /></label>
+                        <label>Disable Thinking
+                            <select id="cfg-ai-disable-thinking">
+                                <option value="true">Yes (recommended)</option>
+                                <option value="false">No</option>
+                            </select>
+                        </label>
+                    </div>
+                    <label>Default System Prompt<textarea id="cfg-ai-system-prompt" rows="5" placeholder="Global system prompt (used when a mode has no override)"></textarea></label>
+                    <div class="actions">
+                        <button class="button" type="submit" title="Save AI configuration">Save Config</button>
+                        <button class="button secondary" type="button" id="ai-test" title="Test the configured AI connection">Test Connection</button>
+                    </div>
+                </div>
+
+                <!-- AI Modes -->
+                <div class="config-section" data-config-section="ai-modes">
+                    <div class="config-section-head">
+                        <h2>AI Modes</h2>
+                        <p class="muted-copy">Modes control how the AI interprets questions. Add, edit, or delete modes, then save.</p>
+                    </div>
+                    <div class="mode-list" id="ai-modes-list"></div>
+                    <div class="actions">
+                        <button class="button secondary" type="button" id="add-mode" title="Add a new AI mode">+ Add Mode</button>
+                        <button class="button" type="submit" title="Save config and AI mode changes">Save Config</button>
+                    </div>
+                </div>
+
+                <!-- Users -->
+                <div class="config-section" data-config-section="users">
+                    <div class="config-section-head">
+                        <h2>Users</h2>
+                        <p class="muted-copy">Manage who can log in. All users share the same inventory.</p>
+                    </div>
+
+                    <div class="user-security-box">
+                        <strong class="user-security-label">Access Settings</strong>
+                        <label class="check">
+                            <input type="checkbox" id="cfg-auth-default-admin" />
+                            Allow the configured bootstrap administrator login
+                        </label>
+                        <p class="muted-copy" style="margin:4px 0 0">Disable this after creating a database-backed admin, then remove the bootstrap credentials from the host environment.</p>
+                        <div class="actions" style="margin-top:8px">
+                            <button class="button secondary" type="button" id="save-auth-settings" title="Save access settings">Save Access Settings</button>
+                        </div>
+                    </div>
+
+                    <div id="user-list" class="user-list"></div>
+                    <div class="actions">
+                        <button class="button" type="button" id="add-user" title="Create a new user">+ Add User</button>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="app-view" id="import-export-view" data-view="import-export">
+    <div class="panel import-panel">
+        <h1>Import / Export</h1>
+        <p class="muted-copy admin-only">Export full list as JSON or CSV. Import expects the JSON export format.</p>
+        <p class="muted-copy non-admin-only">Download your shopping list of items marked Need to Buy.</p>
+        <div class="actions export-actions">
+            <a class="button admin-only" href="/api/export?format=json" title="Download a full JSON backup">Export JSON</a>
+            <a class="button secondary admin-only" href="/api/export?format=csv" title="Download inventory as CSV">Export CSV</a>
+            <a class="button secondary" href="/api/export?format=txt&filter=need" title="Download a text shopping list for items marked need to buy">Shopping List (Need=YES)</a>
+        </div>
+        <form id="import-form" class="import-form admin-only">
+            <label>Import JSON<input id="import-file" type="file" accept="application/json,.json" /></label>
+            <button class="button" type="submit" title="Import the selected JSON export">Import</button>
+        </form>
+    </div>
+</section>
+
+<section class="app-view" id="stats-view" data-view="stats">
+    <div class="panel stats-panel">
+        <div class="stats-sub-tabs" role="tablist">
+            <button class="stats-tab is-active" data-stats-tab="inventory" role="tab" title="Inventory analytics">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 22h8M12 22v-7M5 3l2 9a5 5 0 0 0 10 0l2-9H5z"/></svg>
+                Inventory
+            </button>
+            <button class="stats-tab" data-stats-tab="usage" role="tab" title="Usage trends and item history">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-7"/></svg>
+                Usage &amp; History
+            </button>
+            <button class="stats-tab" data-stats-tab="recipes" role="tab" title="Recipe analytics">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                Recipes
+            </button>
+        </div>
+
+        <!-- Inventory Stats -->
+        <div class="stats-section is-active" data-stats-section="inventory">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Bottles by Type</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="inv-type-qty">2D View</button>
+                    </div>
+                    <div id="chart-inv-type-qty" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>ABV &amp; Rating Landscape</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="inv-abv-rating">2D View</button>
+                    </div>
+                    <div id="chart-inv-abv-rating" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Inventory Status</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="inv-status">By Type</button>
+                    </div>
+                    <div id="chart-inv-status" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Rating Distribution</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="inv-ratings">2D View</button>
+                    </div>
+                    <div id="chart-inv-ratings" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Remaining Stock by Type</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="inv-remaining">3D View</button>
+                    </div>
+                    <div id="chart-inv-remaining" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Bottle Size Distribution</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="inv-sizes">Bar View</button>
+                    </div>
+                    <div id="chart-inv-sizes" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Alcohol Types</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="inv-type-pie">Bar View</button>
+                    </div>
+                    <div id="chart-inv-type-pie" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Avg Remaining % by Type</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="inv-remaining-pie">Bar View</button>
+                    </div>
+                    <div id="chart-inv-remaining-pie" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Bottles by Brand</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="inv-brand">Bar View</button>
+                    </div>
+                    <div id="chart-inv-brand" class="chart-container"></div>
+                </div>
+                <div class="chart-card chart-card-wide">
+                    <div class="chart-card-head">
+                        <h3>Low Stock Alert</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="inv-low-stock">By Type</button>
+                    </div>
+                    <div id="chart-inv-low-stock" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage and History -->
+        <div class="stats-section" data-stats-section="usage">
+            <div class="usage-toolbar">
+                <label>History range
+                    <select id="usage-days">
+                        <option value="30">Last 30 days</option>
+                        <option value="90" selected>Last 90 days</option>
+                        <option value="180">Last 180 days</option>
+                        <option value="365">Last 365 days</option>
+                    </select>
+                </label>
+                <label>Item history
+                    <select id="usage-item-select"></select>
+                </label>
+                <button class="button secondary" type="button" id="usage-refresh">Refresh history</button>
+            </div>
+
+            <p class="usage-caveat" id="usage-tracking-note">Loading inventory history...</p>
+
+            <div class="usage-summary" aria-label="Usage summary">
+                <div><strong id="usage-total-volume">0 mL</strong><span>used in range</span></div>
+                <div><strong id="usage-items-used">0</strong><span>items used</span></div>
+                <div><strong id="usage-restocked-volume">0 mL</strong><span>restocked</span></div>
+                <div><strong id="usage-attention-count">0</strong><span>need attention</span></div>
+            </div>
+
+            <div class="chart-grid usage-chart-grid">
+                <div class="chart-card chart-card-wide">
+                    <div class="chart-card-head">
+                        <h3>Consumption Over Time</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="usage-daily">Weekly</button>
+                    </div>
+                    <div id="chart-usage-daily" class="chart-container chart-container-short"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Most Used Items</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="usage-ranked">Reorder</button>
+                    </div>
+                    <div id="chart-usage-ranked" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3 id="usage-item-chart-title">Item Stock History</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="usage-item-history">Remaining %</button>
+                    </div>
+                    <div id="chart-usage-item-history" class="chart-container"></div>
+                </div>
+            </div>
+
+            <div class="usage-table-grid">
+                <section class="usage-table-section usage-table-wide">
+                    <div class="usage-table-head">
+                        <h3>Reorder Forecast</h3>
+                        <span>Based on recorded consumption</span>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="usage-table">
+                            <thead><tr><th>Item</th><th>Stock</th><th>Used</th><th>Daily</th><th>Estimate</th><th>Action</th></tr></thead>
+                            <tbody id="usage-reorder-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+                <section class="usage-table-section usage-table-wide">
+                    <div class="usage-table-head">
+                        <h3>Recently Changed</h3>
+                        <span>Latest inventory updates</span>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="usage-table">
+                            <thead><tr><th>Item</th><th>Change</th><th>When</th></tr></thead>
+                            <tbody id="usage-recent-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+                <section class="usage-table-section usage-table-wide">
+                    <div class="usage-table-head">
+                        <h3>No Recorded Usage</h3>
+                        <span id="usage-unused-summary">Items currently on hand with no stock decrease in this range</span>
+                    </div>
+                    <div id="usage-unused-list" class="usage-unused-list"></div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Recipe Stats -->
+        <div class="stats-section" data-stats-section="recipes">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Recipes by Category</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="rec-category">Pie View</button>
+                    </div>
+                    <div id="chart-rec-category" class="chart-container"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Recipe Rating Distribution</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="rec-ratings">2D View</button>
+                    </div>
+                    <div id="chart-rec-ratings" class="chart-container"></div>
+                </div>
+                <div class="chart-card chart-card-wide">
+                    <div class="chart-card-head">
+                        <h3>Top Recipe Tags</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="rec-tags">Vertical</button>
+                    </div>
+                    <div id="chart-rec-tags" class="chart-container chart-container-short"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-head">
+                        <h3>Saved By User</h3>
+                        <button class="button secondary chart-toggle-btn" data-chart="rec-savedby">Bar View</button>
+                    </div>
+                    <div id="chart-rec-savedby" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="app-view" id="recipes-view" data-view="recipes">
+    <div class="panel recipes-panel">
+        <div class="inventory-tools">
+            <label>
+                <span>Search</span>
+                <input id="recipe-search" placeholder="name, tags, ingredients..." />
+            </label>
+            <label>
+                <span>Category</span>
+                <select id="recipe-filter-category">
+                    <option value="">All</option>
+                </select>
+            </label>
+            <label>
+                <span>Min rating</span>
+                <select id="recipe-filter-rating">
+                    <option value="">Any</option>
+                    <option value="7">7+</option>
+                    <option value="8">8+</option>
+                    <option value="9">9+</option>
+                    <option value="10">10 only</option>
+                </select>
+            </label>
+            <button class="button" id="add-recipe" title="Add a new recipe">+ Add Recipe</button>
+            <button class="button secondary" id="refresh-recipes" title="Reload recipes from SQL Server">Refresh</button>
+        </div>
+
+        <div class="summary-line" aria-live="polite">
+            <span><strong id="recipe-stat-total">0</strong> recipes</span>
+            <span><strong id="recipe-stat-categories">0</strong> categories</span>
+            <span><strong id="recipe-stat-rated">0</strong> rated</span>
+        </div>
+
+        <div class="table-wrap recipes-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="item-actions-heading"></th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Rating</th>
+                        <th>Tags</th>
+                        <th>Saved by</th>
+                    </tr>
+                </thead>
+                <tbody id="recipes-body"></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<div class="modal" id="recipe-modal" hidden>
+    <div class="modal-backdrop" data-close-recipe-modal></div>
+    <aside class="modal-panel panel recipe-modal-panel" aria-labelledby="recipe-form-title" role="dialog" aria-modal="true">
+        <div class="panel-head">
+            <h2 id="recipe-form-title">Add Recipe</h2>
+            <button class="button secondary icon-button" type="button" data-close-recipe-modal aria-label="Close" title="Close recipe dialog">x</button>
+        </div>
+        <!-- Read-only view with rendered markdown -->
+        <div id="recipe-prose" hidden>
+            <div class="recipe-view-meta" id="recipe-view-meta"></div>
+            <div id="recipe-view-md" class="markdown-body recipe-markdown-body"></div>
+            <div class="actions">
+                <button class="button secondary" type="button" id="recipe-view-edit" title="Switch to edit mode">Edit</button>
+                <button class="button secondary" type="button" id="recipe-view-export" title="Export recipe as text file">Export TXT</button>
+                <button class="button secondary" type="button" data-close-recipe-modal>Close</button>
+            </div>
+        </div>
+        <!-- Edit / Add form -->
+        <form id="recipe-form">
+            <input type="hidden" id="recipe-id" />
+            <input type="hidden" id="recipe-version" value="0" />
+            <label>Name<input id="recipe-name" required placeholder="Classic Negroni" /></label>
+            <div class="two-col">
+                <label>Category
+                    <select id="recipe-category">
+                        <option value="Cocktail">Cocktail</option>
+                        <option value="Shot">Shot</option>
+                        <option value="Highball">Highball</option>
+                        <option value="Mocktail">Mocktail</option>
+                        <option value="Beer">Beer</option>
+                        <option value="Wine">Wine</option>
+                        <option value="Punch">Punch</option>
+                        <option value="Hot Drink">Hot Drink</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </label>
+                <label>Rating<input id="recipe-rating" type="number" min="0" max="10" value="0" /></label>
+            </div>
+            <label>Tags<input id="recipe-tags" placeholder="stirred, gin-based, bitter" /></label>
+            <label>Recipe (Markdown)
+                <textarea id="recipe-markdown" rows="14" placeholder="## Ingredients&#10;- 1 oz gin&#10;- 1 oz Campari&#10;&#10;## Instructions&#10;Stir over ice..."></textarea>
+            </label>
+            <div class="actions stretch">
+                <button class="button" type="submit" title="Save recipe">Save Recipe</button>
+                <button class="button secondary" type="button" id="recipe-form-cancel" title="Cancel">Cancel</button>
+            </div>
+        </form>
+    </aside>
+</div>
+
+<div class="modal" id="item-modal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <aside class="modal-panel panel" aria-labelledby="form-title" role="dialog" aria-modal="true">
+        <div class="panel-head">
+            <h2 id="form-title">Add item</h2>
+            <button class="button secondary icon-button" type="button" data-close-modal aria-label="Close" title="Close item dialog">x</button>
+        </div>
+        <!-- Prose view (shown in read-only / view mode) -->
+        <div id="item-prose" hidden>
+            <div class="prose-kicker" id="view-kicker"></div>
+            <h2 class="prose-name" id="view-name"></h2>
+            <div class="prose-chips" id="view-chips"></div>
+            <p class="prose-para" id="view-para"></p>
+            <div class="prose-meta" id="view-meta"></div>
+            <div class="actions">
+                <button class="button secondary" type="button" data-close-modal>Close</button>
+            </div>
+        </div>
+        <form id="item-form">
+            <input type="hidden" id="item-id" />
+            <input type="hidden" id="item-version" value="0" />
+            <label>Type<select id="type" required></select></label>
+            <label>Brand<input id="brand" required /></label>
+            <label>Name<input id="name" required /></label>
+            <div class="two-col">
+                <label>Size ml<select id="sizeMl"></select></label>
+                <label>ABV<select id="abv"></select></label>
+            </div>
+            <div class="two-col">
+                <label>Qty<input id="qty" type="number" min="0" value="1" /></label>
+                <label>Remaining %<select id="remainingPct"></select></label>
+            </div>
+            <div class="two-col">
+                <label>Rating<input id="rating" type="number" min="0" max="10" value="0" /></label>
+                <label class="check"><input id="needToBuy" type="checkbox" /> Need to buy</label>
+            </div>
+            <label>Tags<input id="tags" placeholder="oak, vanilla, neat" /></label>
+            <label>Notes<textarea id="notes" rows="4"></textarea></label>
+            <div class="actions stretch">
+                <button class="button" type="submit" title="Save item changes">Save item</button>
+                <button class="button secondary" type="button" id="reset-form" title="Cancel and close">Cancel</button>
+            </div>
+        </form>
+    </aside>
+</div>
+
+<div class="modal" id="mode-modal" hidden>
+    <div class="modal-backdrop" data-close-mode-modal></div>
+    <aside class="modal-panel panel" aria-labelledby="mode-form-title" role="dialog" aria-modal="true">
+        <div class="panel-head">
+            <h2 id="mode-form-title">Add Mode</h2>
+            <button class="button secondary icon-button" type="button" data-close-mode-modal aria-label="Close" title="Close mode dialog">x</button>
+        </div>
+        <form id="mode-form">
+            <input type="hidden" id="mode-index" value="-1" />
+            <label>Label<input id="mode-label" required placeholder="Can Make Now" /></label>
+            <label>ID<input id="mode-id" required placeholder="can_make_now" /></label>
+            <label>Instruction<textarea id="mode-instruction" rows="4" required></textarea></label>
+            <label>System prompt override<textarea id="mode-system-prompt" rows="4"></textarea></label>
+            <label class="check"><input id="mode-restrict" type="checkbox" /> Restrict to inventory only</label>
+            <div class="actions stretch">
+                <button class="button" type="submit" title="Save this AI mode">Save Mode</button>
+                <button class="button secondary" type="button" data-close-mode-modal title="Cancel mode editing">Cancel</button>
+            </div>
+        </form>
+    </aside>
+</div>
+
+<div class="modal" id="ai-response-modal" hidden>
+    <div class="modal-backdrop" data-close-ai-modal></div>
+    <aside class="modal-panel panel ai-response-panel" aria-labelledby="ai-response-title" role="dialog" aria-modal="true">
+        <div class="panel-head">
+            <h2 id="ai-response-title">AI Response</h2>
+            <button class="button secondary icon-button" type="button" data-close-ai-modal aria-label="Close" title="Close AI response">x</button>
+        </div>
+        <div class="actions response-actions">
+            <button class="button secondary" type="button" id="ai-raw-toggle" title="Toggle between rendered Markdown and raw text">Raw View</button>
+            <button class="button secondary" type="button" id="ai-copy" title="Copy AI response to clipboard">Copy</button>
+            <button class="button secondary" type="button" id="ai-export" title="Export AI response as a text file">Export TXT</button>
+            <button class="button secondary" type="button" id="ai-save-recipe" title="Save this AI response as a Recipe">Save as Recipe</button>
+            <button class="button" type="button" data-close-ai-modal title="Close AI response">Close</button>
+        </div>
+        <div id="ai-response-md" class="markdown-body"></div>
+        <pre id="ai-response-raw" hidden></pre>
+    </aside>
+</div>
+
+<!-- Add / Edit User modal -->
+<div class="modal" id="user-modal" hidden>
+    <div class="modal-backdrop" data-close-user-modal></div>
+    <aside class="modal-panel panel" aria-labelledby="user-modal-title" role="dialog" aria-modal="true">
+        <div class="panel-head">
+            <h2 id="user-modal-title">Add User</h2>
+            <button class="button secondary icon-button" type="button" data-close-user-modal aria-label="Close" title="Close">x</button>
+        </div>
+        <form id="user-form">
+            <input type="hidden" id="user-id" />
+            <label>Email<input type="email" id="user-email" required autocomplete="off" /></label>
+            <label>Role
+                <select id="user-role">
+                    <option value="user">Standard User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </label>
+            <label class="check"><input type="checkbox" id="user-active" checked /> Active</label>
+            <div id="user-password-section">
+                <label>Password<input type="password" id="user-password" autocomplete="new-password" /></label>
+            </div>
+            <div class="actions stretch">
+                <button class="button" type="submit" title="Save user">Save User</button>
+                <button class="button secondary" type="button" data-close-user-modal>Cancel</button>
+            </div>
+        </form>
+    </aside>
+</div>
+
+<!-- Expanded chart modal -->
+<div class="modal" id="chart-expanded-modal" hidden>
+    <div class="modal-backdrop" id="chart-expanded-backdrop"></div>
+    <div class="chart-expanded-panel panel">
+        <div class="chart-expanded-head">
+            <h2 id="chart-expanded-title">Chart</h2>
+            <div class="chart-expanded-actions">
+                <button class="button secondary" id="chart-expanded-toggle" title="Switch chart view">2D View</button>
+                <button class="button secondary icon-button" id="chart-expanded-close" type="button" aria-label="Close expanded chart" title="Close">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+        </div>
+        <div id="chart-expanded-body" class="chart-expanded-body"></div>
+    </div>
+</div>
+
+<!-- Set Password modal -->
+<div class="modal" id="set-password-modal" hidden>
+    <div class="modal-backdrop" data-close-password-modal></div>
+    <aside class="modal-panel panel" aria-labelledby="set-password-title" role="dialog" aria-modal="true">
+        <div class="panel-head">
+            <h2 id="set-password-title">Change Password</h2>
+            <button class="button secondary icon-button" type="button" data-close-password-modal aria-label="Close" title="Close">x</button>
+        </div>
+        <form id="set-password-form">
+            <input type="hidden" id="password-user-id" />
+            <label>New Password<input type="password" id="new-password" required autocomplete="new-password" /></label>
+            <label>Confirm Password<input type="password" id="confirm-password" required autocomplete="new-password" /></label>
+            <div class="actions stretch">
+                <button class="button" type="submit" title="Set password">Set Password</button>
+                <button class="button secondary" type="button" data-close-password-modal>Cancel</button>
+            </div>
+        </form>
+    </aside>
+</div>
+
+<div id="toast" role="status"></div>

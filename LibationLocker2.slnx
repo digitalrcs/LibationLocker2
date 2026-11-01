@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LibationLocker.Web/LibationLocker.Web.csproj" />
+  </Folder>
+</Solution>
