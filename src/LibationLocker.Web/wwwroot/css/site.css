@@ -2017,7 +2017,13 @@ footer,
 /* Chart render targets */
 .chart-container {
   width: 100%;
+  min-width: 0;
   min-height: 320px;
+}
+
+/* SVG chart contents must not impose their previous width on a shrinking grid. */
+.usage-chart-grid > .chart-card {
+  min-width: 0;
 }
 
 .chart-container-short {

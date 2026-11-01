@@ -222,7 +222,7 @@ function activateView(view) {
   document.querySelectorAll("[data-view-link]").forEach((link) => {
     link.classList.toggle("is-active", link.dataset.viewLink === view);
   });
-  if (view === "stats") requestAnimationFrame(() => { if (typeof Plotly !== "undefined") renderAllStats(); });
+  if (view === "stats") requestAnimationFrame(renderAllStats);
 }
 
 function activateConfigSection(tab) {
@@ -1355,12 +1355,13 @@ function plotEl(id, traces, layout, cfg) {
 }
 
 function showNoData(id, msg) {
-  const el = document.getElementById(id);
+  const el = document.getElementById(plotElOverride || id);
   if (!el) return;
   if (el._llPlotted && typeof Plotly !== "undefined") {
     Plotly.purge(el);
     el._llPlotted = false;
   }
+  disposeUsageChart(el);
   el.innerHTML = `<div class="chart-no-data">${escapeHtml(msg)}</div>`;
 }
 
@@ -2219,112 +2220,99 @@ function renderChartUsageDaily(isPrimary) {
     showNoData(id, "No stock decreases have been recorded in this range.");
     return;
   }
-
+  // Include zero-usage periods in both modes instead of connecting over gaps.
   const grouped = new Map();
-  if (isPrimary) {
-    const cursor = startOfLocalDay(analytics.cutoff);
-    const end = startOfLocalDay(analytics.now);
-    while (cursor <= end) {
-      const key = localDateKey(cursor);
-      grouped.set(key, analytics.daily.get(key) || 0);
-      cursor.setDate(cursor.getDate() + 1);
-    }
-  } else {
-    for (const entry of analytics.usageEvents) {
-      const key = localDateKey(startOfWeek(entry.date));
-      grouped.set(key, (grouped.get(key) || 0) + entry.amountMl);
-    }
+  const cursor = isPrimary ? startOfLocalDay(analytics.cutoff) : startOfWeek(analytics.cutoff);
+  const end = startOfLocalDay(analytics.now);
+  while (cursor <= end) {
+    grouped.set(localDateKey(cursor), 0);
+    cursor.setDate(cursor.getDate() + (isPrimary ? 1 : 7));
   }
-
+  for (const entry of analytics.usageEvents) {
+    const key = localDateKey(isPrimary ? entry.date : startOfWeek(entry.date));
+    grouped.set(key, (grouped.get(key) || 0) + entry.amountMl);
+  }
   const keys = [...grouped.keys()].sort();
-  const values = keys.map((key) => grouped.get(key));
-  const labels = keys.map((key) => new Date(`${key}T00:00:00`).toLocaleDateString(undefined,
-    isPrimary ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "2-digit" }));
-  const tc = statsTheme();
-  plotEl(id, [{
-    type: "bar",
-    x: labels,
-    y: values,
-    marker: { color: PALETTE[0] },
-    text: values.map((value) => value > 0 && (!isPrimary || keys.length <= 31) ? formatVolume(value) : ""),
-    textposition: "outside",
-    customdata: values.map((value) => formatVolume(value)),
-    hovertemplate: "%{x}<br>%{customdata} used<extra></extra>"
-  }], basePlotLayout({
-    xaxis: { title: isPrimary ? "Day" : "Week starting", gridcolor: "transparent", automargin: true },
-    yaxis: { title: "Volume used (mL)", gridcolor: tc.border, rangemode: "tozero" },
-    showlegend: false,
-    margin: { l: 64, r: 20, t: 22, b: 58 }
-  }), plotConfig());
+  const labels = keys.map(key => new Date(key + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" }));
+  const values = keys.map(key => grouped.get(key));
+  renderUsageChart(id, {
+    xAxis: { ...usageChartAxis(isPrimary ? "Day" : "Week starting", "category"), data: labels, boundaryGap: false },
+    yAxis: { ...usageChartAxis(""), min: 0, axisLabel: { color: statsTheme().muted, formatter: value => formatVolume(value) } },
+    dataZoom: usageChartZoom(),
+    tooltip: { formatter: entries => {
+      const point = entries[0];
+      return escapeHtml(labels[point.dataIndex]) + "<br>" + escapeHtml(formatVolume(point.value)) + " used";
+    } },
+    series: [{ name: "Recorded consumption", type: "line", data: values, smooth: false,
+      showSymbol: keys.length <= 31, symbolSize: 7, lineStyle: { width: 2 },
+      areaStyle: { opacity: 0.13 }, emphasis: { focus: "series" } }]
+  }, (isPrimary ? "Daily" : "Weekly") + " recorded consumption. " + formatVolume(analytics.totalUsedMl) + " used in this range. Usage is inferred from inventory decreases.",
+  id + ":" + state.historyDays + ":" + isPrimary);
 }
 
 function renderChartUsageRanked(isPrimary) {
   const id = "chart-usage-ranked";
+  const title = isPrimary ? "Most Used Items" : "Estimated Days Remaining";
+  const heading = $(id)?.closest(".chart-card")?.querySelector("h3");
+  if (heading) heading.textContent = title;
+  if (plotElOverride) $("chart-expanded-title").textContent = title;
   const analytics = calculateUsageAnalytics();
   const ranked = isPrimary
-    ? analytics.forecasts.filter((item) => item.usedMl > 0).sort((a, b) => b.usedMl - a.usedMl).slice(0, 10)
-    : analytics.forecasts.filter((item) => item.daysRemaining !== null).sort((a, b) => a.daysRemaining - b.daysRemaining).slice(0, 10);
+    ? analytics.forecasts.filter(item => item.usedMl > 0).sort((a, b) => b.usedMl - a.usedMl).slice(0, 10)
+    : analytics.forecasts.filter(item => item.daysRemaining !== null).sort((a, b) => a.daysRemaining - b.daysRemaining).slice(0, 10);
   if (!ranked.length) {
     showNoData(id, isPrimary ? "No item usage has been recorded yet." : "More usage history is needed for a reorder forecast.");
     return;
   }
-
-  const display = [...ranked].reverse();
-  const values = display.map((item) => isPrimary ? item.usedMl : item.daysRemaining);
-  const text = display.map((item) => isPrimary ? formatVolume(item.usedMl) : `${Math.round(item.daysRemaining)} days`);
-  const tc = statsTheme();
-  plotEl(id, [{
-    type: "bar",
-    orientation: "h",
-    x: values,
-    y: display.map((item) => itemDisplayName(item.item)),
-    marker: { color: display.map((_, index) => PALETTE[index % PALETTE.length]) },
-    text,
-    textposition: "outside",
-    hovertemplate: "%{y}<br>%{text}<extra></extra>"
-  }], basePlotLayout({
-    xaxis: { title: isPrimary ? "Volume used (mL)" : "Estimated days remaining", gridcolor: tc.border, rangemode: "tozero" },
-    yaxis: { automargin: true },
-    showlegend: false,
-    margin: { l: 150, r: 64, t: 12, b: 48 }
-  }), plotConfig());
+  const names = ranked.map(entry => itemDisplayName(entry.item));
+  const values = ranked.map(entry => isPrimary ? entry.usedMl : entry.daysRemaining);
+  const labels = ranked.map(entry => isPrimary ? formatVolume(entry.usedMl) : Math.round(entry.daysRemaining) + " days");
+  const theme = statsTheme();
+  const el = document.getElementById(plotElOverride || id);
+  const labelWidth = Math.min(155, Math.max(80, (el?.clientWidth || 400) * 0.3));
+  renderUsageChart(id, {
+    grid: { left: 8, right: 64, top: 16, bottom: 52, containLabel: true },
+    xAxis: { ...usageChartAxis(isPrimary ? "Volume used" : "Estimated days left"), min: 0,
+      axisLabel: { color: theme.muted, hideOverlap: true, formatter: value => isPrimary ? formatVolume(value) : value } },
+    yAxis: { ...usageChartAxis("", "category"), data: names, inverse: true,
+      axisLabel: { color: theme.text, width: labelWidth, overflow: "truncate", fontSize: 11 } },
+    tooltip: { trigger: "item", formatter: point => escapeHtml(names[point.dataIndex]) + "<br>" + escapeHtml(labels[point.dataIndex]) + (isPrimary ? " used" : " estimated remaining") },
+    series: [{ name: isPrimary ? "Usage" : "Reorder estimate", type: "bar", barMaxWidth: 22,
+      data: values.map((value, index) => ({ value, itemStyle: { color: isPrimary ? "#0ea5e9" : ranked[index].needsAttention ? "#f59e0b" : "#14b8a6", borderRadius: [0, 4, 4, 0] } })),
+      label: { show: true, position: "right", color: theme.text, fontSize: 11, formatter: point => labels[point.dataIndex] } }]
+  }, (isPrimary ? "Most used items. " : "Estimated days remaining; these are forecasts. ") + names.map((name, index) => name + ": " + labels[index]).join("; "),
+  id + ":" + state.historyDays + ":" + isPrimary);
 }
 
 function renderChartUsageItemHistory(isPrimary) {
   const id = "chart-usage-item-history";
   const selectedId = state.selectedHistoryItemId;
   const itemEvents = state.itemHistory
-    .filter((event) => event.itemId === selectedId && event.eventType !== "delete" && event.afterQty !== null)
+    .filter(event => event.itemId === selectedId && event.eventType !== "delete" && event.afterQty !== null)
     .sort((a, b) => Number(a.changedAt) - Number(b.changedAt));
   const item = historyItemLookup().get(selectedId);
-  $("usage-item-chart-title").textContent = item ? `${itemDisplayName(item)} History` : "Item Stock History";
+  $("usage-item-chart-title").textContent = item ? itemDisplayName(item) + " History" : "Item Stock History";
   if (!itemEvents.length) {
     showNoData(id, "Select an item with recorded history.");
     return;
   }
-
-  const x = itemEvents.map((event) => historyDate(event));
-  const y = itemEvents.map((event) => isPrimary
-    ? historyEventVolume(event, "after")
-    : Number(event.afterRemainingPct));
-  const labels = itemEvents.map((event) => describeHistoryEvent(event));
-  const values = y.map((value) => isPrimary ? formatVolume(value) : `${value}%`);
-  const tc = statsTheme();
-  plotEl(id, [{
-    type: "scatter",
-    mode: "lines+markers",
-    x,
-    y,
-    line: { color: PALETTE[6], width: 3, shape: "hv" },
-    marker: { color: PALETTE[6], size: 8 },
-    customdata: values.map((value, index) => [value, labels[index]]),
-    hovertemplate: "%{x|%b %d, %Y %I:%M %p}<br>%{customdata[0]}<br>%{customdata[1]}<extra></extra>"
-  }], basePlotLayout({
-    xaxis: { title: "Recorded change", gridcolor: "transparent", automargin: true },
-    yaxis: { title: isPrimary ? "Stock volume (mL)" : "Open bottle remaining", ticksuffix: isPrimary ? "" : "%", gridcolor: tc.border, rangemode: "tozero" },
-    showlegend: false,
-    margin: { l: 70, r: 20, t: 12, b: 58 }
-  }), plotConfig());
+  const values = itemEvents.map(event => isPrimary ? historyEventVolume(event, "after") : Number(event.afterRemainingPct));
+  const labels = values.map(value => isPrimary ? formatVolume(value) : value + "%");
+  renderUsageChart(id, {
+    xAxis: { ...usageChartAxis("Recorded change", "time"), axisLabel: { color: statsTheme().muted, hideOverlap: true,
+      formatter: value => new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" }) } },
+    yAxis: { ...usageChartAxis(""), min: 0, ...(isPrimary ? {} : { max: 100 }),
+      axisLabel: { color: statsTheme().muted, formatter: value => isPrimary ? formatVolume(value) : value + "%" } },
+    dataZoom: usageChartZoom(),
+    tooltip: { formatter: entries => {
+      const index = entries[0].dataIndex;
+      return escapeHtml(formatHistoryDate(historyDate(itemEvents[index]), true)) + "<br>" + escapeHtml(labels[index]) + "<br>" + escapeHtml(describeHistoryEvent(itemEvents[index]));
+    } },
+    series: [{ name: isPrimary ? "Stock volume" : "Open bottle remaining", type: "line", step: "end", smooth: false,
+      data: itemEvents.map((event, index) => [historyDate(event).getTime(), values[index]]),
+      symbolSize: 7, showSymbol: true, lineStyle: { width: 2 }, itemStyle: { color: "#14b8a6" }, areaStyle: { opacity: 0.08 } }]
+  }, itemDisplayName(item) + ". " + (isPrimary ? "Stock volume" : "Open bottle remaining percentage") + " at " + itemEvents.length + " recorded changes. Latest value: " + labels[labels.length - 1] + ". Steps represent saved updates, not continuous measurements.",
+  id + ":" + selectedId + ":" + state.historyDays + ":" + isPrimary);
 }
 
 // ── Chart dispatch & toggle ───────────────────────────────────────────────────
@@ -2360,7 +2348,6 @@ function handleChartToggle(chartId) {
 }
 
 function renderAllStats() {
-  if (typeof Plotly === "undefined") return;
   const active = document.querySelector("[data-stats-section].is-active")?.dataset.statsSection;
   const ids = active === "recipes"
     ? ["rec-category","rec-ratings","rec-tags","rec-savedby"]
@@ -2384,8 +2371,10 @@ function openChartExpanded(chartId) {
   const def = CHART_DEFS[chartId];
   if (!def) return;
 
-  // Purge any previous chart so Plotly starts fresh in the expanded container
+  // The shared expanded container can be owned by either chart renderer.
   const body = $("chart-expanded-body");
+  disposeUsageChart(body);
+  if (body && !body._llPlotted) body.replaceChildren();
   if (body && body._llPlotted && typeof Plotly !== "undefined") {
     Plotly.purge(body);
     body._llPlotted = false;
@@ -2416,6 +2405,9 @@ function closeChartExpanded() {
   $("chart-expanded-modal").setAttribute("hidden", "");
   document.body.style.overflow = "";
   state.expandedChart = null;
+  disposeUsageChart($("chart-expanded-body"));
+  const button = document.querySelector(`[data-chart="${chartId}"]`);
+  if (button && CHART_DEFS[chartId]) button.textContent = chartModes[chartId] !== "alt" ? CHART_DEFS[chartId].labelP : CHART_DEFS[chartId].labelA;
 
   // Re-render grid card to sync any mode changes made while expanded
   if (chartId) {

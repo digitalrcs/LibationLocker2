@@ -35,6 +35,7 @@ The editions share the Libation Locker concept and import/export workflow, but t
 - Recipe library with Markdown content, categories, ratings, and tags.
 - Import, export, and shopping-list workflows.
 - Append-only item history with usage trends, restock detection, reorder estimates, and per-item timelines.
+- Interactive Usage & History charts powered by locally bundled Apache ECharts, with date zoom, theme support, and expanded views.
 - Optional LM Studio or OpenAI-compatible AI with model discovery, streaming, configurable timeouts, and availability status.
 - Cookie authentication, database-backed users, roles, and a removable first-run bootstrap administrator.
 - Multiple themes and responsive desktop/mobile layouts.
