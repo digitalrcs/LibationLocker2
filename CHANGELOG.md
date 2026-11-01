@@ -2,6 +2,11 @@
 
 # Changelog
 
+## 2.1.1 - 2026-11-01
+
+- Open legacy inventory and recipe charts in 2D by default.
+- Disable unsupported 3D toggles in both grid and expanded views when WebGL is unavailable.
+
 ## 2.1.0 - 2026-11-01
 
 - Replaced Usage & History charts with locally bundled Apache ECharts 6.1.0: consumption line/area, usage and reorder bars, and stepped stock history.

@@ -160,6 +160,7 @@ function bindEvents() {
   });
   $("usage-refresh")?.addEventListener("click", loadItemHistory);
   document.querySelectorAll(".chart-toggle-btn").forEach((btn) => {
+    syncChartModeButton(btn.dataset.chart, btn);
     btn.addEventListener("click", () => handleChartToggle(btn.dataset.chart));
   });
 
@@ -1297,7 +1298,49 @@ function toast(message) {
 
 // ── Statistics ─────────────────────────────────────────────────────────────────
 
-const chartModes = {}; // chartId -> 'primary' | 'alt'
+// Start every chart in an SVG-based 2D mode, including browsers with WebGL.
+const chartModes = {
+  "inv-type-qty": "alt", "inv-abv-rating": "alt", "inv-ratings": "alt",
+  "rec-category": "alt", "rec-ratings": "alt"
+};
+
+let webGlAvailable;
+function supportsChartWebGl() {
+  if (webGlAvailable !== undefined) return webGlAvailable;
+  try {
+    const canvas = document.createElement("canvas");
+    const options = { failIfMajorPerformanceCaveat: true };
+    const gl = canvas.getContext("webgl", options) || canvas.getContext("experimental-webgl", options);
+    webGlAvailable = Boolean(gl && !gl.isContextLost());
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+  } catch {
+    webGlAvailable = false;
+  }
+  return webGlAvailable;
+}
+
+function chartModeNeedsWebGl(chartId, isPrimary) {
+  if (chartId === "inv-remaining") return !isPrimary;
+  return ["inv-type-qty", "inv-abv-rating", "inv-ratings", "rec-category", "rec-ratings"].includes(chartId) && isPrimary;
+}
+
+function syncChartModeButton(chartId, button) {
+  const def = CHART_DEFS[chartId];
+  if (!def || !button) return;
+  const isPrimary = chartModes[chartId] !== "alt";
+  const unavailable = chartModeNeedsWebGl(chartId, !isPrimary) && !supportsChartWebGl();
+  button.disabled = unavailable;
+  button.textContent = unavailable ? "3D unavailable" : isPrimary ? def.labelP : def.labelA;
+  button.title = unavailable ? "3D needs WebGL, which is unavailable in this browser. The 2D chart remains available." : "";
+}
+
+function toggleChartMode(chartId) {
+  const nextIsPrimary = chartModes[chartId] === "alt";
+  if (chartModeNeedsWebGl(chartId, nextIsPrimary) && !supportsChartWebGl()) return false;
+  chartModes[chartId] = nextIsPrimary ? "primary" : "alt";
+  syncChartModeButton(chartId, document.querySelector(`[data-chart="${chartId}"]`));
+  return true;
+}
 
 const PALETTE = [
   "#c0392b", "#d35400", "#e67e22", "#f39c12",
@@ -2340,10 +2383,7 @@ const CHART_DEFS = {
 function handleChartToggle(chartId) {
   const def = CHART_DEFS[chartId];
   if (!def) return;
-  const wasAlt = chartModes[chartId] === "alt";
-  chartModes[chartId] = wasAlt ? "primary" : "alt";
-  const btn = document.querySelector(`[data-chart="${chartId}"]`);
-  if (btn) btn.textContent = wasAlt ? def.labelP : def.labelA;
+  if (!toggleChartMode(chartId)) return;
   def.fn(chartModes[chartId] !== "alt");
 }
 
@@ -2388,7 +2428,7 @@ function openChartExpanded(chartId) {
 
   // Toggle button shows what clicking will switch TO
   const isPrimary = chartModes[chartId] !== "alt";
-  $("chart-expanded-toggle").textContent = isPrimary ? def.labelP : def.labelA;
+  syncChartModeButton(chartId, $("chart-expanded-toggle"));
 
   $("chart-expanded-modal").removeAttribute("hidden");
   document.body.style.overflow = "hidden";
@@ -2407,7 +2447,7 @@ function closeChartExpanded() {
   state.expandedChart = null;
   disposeUsageChart($("chart-expanded-body"));
   const button = document.querySelector(`[data-chart="${chartId}"]`);
-  if (button && CHART_DEFS[chartId]) button.textContent = chartModes[chartId] !== "alt" ? CHART_DEFS[chartId].labelP : CHART_DEFS[chartId].labelA;
+  syncChartModeButton(chartId, button);
 
   // Re-render grid card to sync any mode changes made while expanded
   if (chartId) {
@@ -2422,11 +2462,10 @@ function handleExpandedToggle() {
   const def = CHART_DEFS[chartId];
   if (!def) return;
 
-  const wasAlt = chartModes[chartId] === "alt";
-  chartModes[chartId] = wasAlt ? "primary" : "alt";
+  if (!toggleChartMode(chartId)) return;
   const isPrimary = chartModes[chartId] !== "alt";
   // Button now shows the other direction
-  $("chart-expanded-toggle").textContent = wasAlt ? def.labelP : def.labelA;
+  syncChartModeButton(chartId, $("chart-expanded-toggle"));
 
   plotElOverride = "chart-expanded-body";
   def.fn(isPrimary);
